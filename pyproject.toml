@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dict-feasibility"
+version = "0.1.0"
+description = "Dictionary feasibility validation pipeline"
+requires-python = ">=3.12"
+dependencies = [
+  "requests>=2.32.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
