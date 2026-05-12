@@ -1,35 +1,156 @@
-# Dictionary Feasibility
+# Lexigo
 
-Validate JMdict, Tatoeba, and Kaikki data for a future Android vocabulary app.
+<p align="center">
+  <strong>A multilingual vocabulary trainer with offline dictionaries, JLPT-aware Japanese learning paths, and a warm mobile study experience.</strong>
+</p>
 
-## Setup
+<p align="center">
+  <img alt="Android" src="https://img.shields.io/badge/Android-Kotlin%20%2B%20Compose-3DDC84?style=for-the-badge&logo=android&logoColor=white">
+  <img alt="Python" src="https://img.shields.io/badge/Data%20Pipeline-Python-3776AB?style=for-the-badge&logo=python&logoColor=white">
+  <img alt="SQLite" src="https://img.shields.io/badge/Offline%20Dictionary-SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white">
+</p>
 
-1. `python -m venv .venv`
-2. `.venv\Scripts\activate`
-3. `python -m pip install -e .[dev]`
+Lexigo is an Android vocabulary learning app backed by a local dictionary packaging pipeline. It currently focuses on Japanese and French, with Japanese learning ordered by JLPT-inspired levels instead of random dictionary entries.
 
-## Commands
+The project combines three parts:
 
-1. `python scripts/write_source_registry.py`
-2. `python scripts/parse_jmdict.py`
-3. `python scripts/parse_kaikki_fr.py`
-4. `python scripts/translate_normalized_words.py`
-5. `python scripts/build_sqlite.py`
-6. `python scripts/sample_report.py`
-7. `python scripts/render_feasibility_report.py`
-8. `python scripts/validate_real_sources.py`
-9. `python scripts/validate_real_source_translations.py`
-10. `python scripts/search_words.py --query hello`
-11. `python scripts/export_dictionary_package.py`
+- A Jetpack Compose Android app for study, review, search, starring, and progress tracking.
+- A Python dictionary pipeline for parsing, translating, validating, packaging, and exporting offline data.
+- A Japanese learning-level classifier that maps dictionary rows to N5-N1 where reliable, and keeps uncertain words out of the beginner path.
+
+## Highlights
+
+| Area | What Lexigo Does |
+| --- | --- |
+| Offline-first | Packages dictionary data into SQLite so the app can search and study without a network dependency. |
+| Japanese levels | Uses JLPT source matching, reading-aware fallbacks, low-value filtering, and optional AI classification support. |
+| Beginner-friendly reading | Shows kana readings and romaji together wherever Japanese pronunciation is displayed. |
+| Study flow | Supports multiple-choice meaning practice, spelling practice, session drafts, review scheduling, and progress stats. |
+| Search and collection | Provides dictionary search, word detail pages, starred words, and language-aware lookup. |
+| Visual direction | Uses a warm, restrained UI inspired by modern vocabulary apps rather than a generic database browser. |
+
+## Current Status
+
+Lexigo is usable as a self-contained Android prototype.
+
+- Android debug builds compile and package successfully.
+- The app can install a generated dictionary package from bundled assets.
+- Japanese study queues can prefer `word_learning_levels` when the packaged database contains level metadata.
+- Large generated artifacts are intentionally excluded from Git.
+
+Known limitation: full production dictionary packages can be very large, so `artifacts/`, `sources/`, generated databases, and APK outputs are ignored by default.
+
+## Architecture
+
+```text
+Lexigo
+|-- android-app/                Android app built with Kotlin and Jetpack Compose
+|   |-- app/src/main/java/      UI, domain logic, repositories, stores
+|   |-- app/src/test/java/      JVM tests for learning, search, review, and utilities
+|   `-- app/src/androidTest/    Device/instrumentation tests
+|-- src/dict_feasibility/       Python package for dictionary processing
+|-- scripts/                    Pipeline entry points and operational scripts
+|-- tests/                      Python tests
+`-- docs/                       Specs, plans, validation notes, and reports
+```
+
+## Data Pipeline
+
+The pipeline is designed to turn raw lexical sources into an app-ready package:
+
+```text
+source dictionaries
+      |
+parse and normalize
+      |
+translation and validation
+      |
+SQLite build
+      |
+JLPT / learning-level enrichment
+      |
+Android asset sync
+```
+
+Main data sources used by the project include:
+
+- JMdict for Japanese dictionary entries.
+- Kaikki / Wiktionary-derived data for French entries.
+- Tatoeba-style sentence data where applicable.
+- JLPT vocabulary sources for Japanese learning-level signals.
+
+## Quick Start
+
+### Python Pipeline
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+python -m pip install -e .[dev]
+python -m pytest -q
+```
+
+Useful pipeline commands:
+
+```powershell
+python scripts/write_source_registry.py
+python scripts/parse_jmdict.py
+python scripts/parse_kaikki_fr.py
+python scripts/translate_normalized_words.py
+python scripts/build_sqlite.py
+python scripts/export_dictionary_package.py
+python scripts/classify_ja_learning_levels.py --limit 100000 --write-db
+```
+
+### Android App
+
+```powershell
+cd android-app
+.\gradlew.bat :app:compileDebugKotlin :app:compileDebugUnitTestKotlin
+.\gradlew.bat :app:assembleDebug
+```
+
+The Android build syncs packaged dictionary assets from:
+
+```text
+artifacts/package/
+```
+
+That directory is ignored by Git because real packages may be large.
+
+## Japanese Learning Levels
+
+Lexigo avoids sending beginner users into the full raw Japanese dictionary. The current level pipeline uses:
+
+1. Exact JLPT word + reading matches.
+2. Unique word fallback matches.
+3. Unique reading fallback matches for kana-written source entries.
+4. Low-value filtering for names, places, companies, archaic forms, rare terms, vulgar terms, affixes, counters, and overly long lemmas.
+5. Optional AI classification for high-value unknown candidates.
+
+Generated outputs live under:
+
+```text
+artifacts/learning_levels/ja/
+```
+
+Important scripts:
+
+```powershell
+python scripts/classify_ja_learning_levels.py --limit 100000 --write-db
+python scripts/analyze_ja_learning_inventory.py --candidate-limit 20000
+python scripts/classify_ja_candidates_ai.py --limit 1000 --batch-size 100
+```
 
 ## Translation Providers
 
-Default translation runs use the local glossary fixture or `sources/translations/glossary.json` if present.
-Translation cache persists by default to `artifacts/reports/translation-cache.json`.
+The default translation path can use local fixtures or supplemental overrides. For personal high-value corrections, place overrides in:
 
-If you maintain your own high-value Chinese translations for self-use, place them in `sources/translations/supplemental_overrides.json` and the translation pipeline will apply them before any provider lookup.
+```text
+sources/translations/supplemental_overrides.json
+```
 
-Example override file:
+Example:
 
 ```json
 [
@@ -37,37 +158,73 @@ Example override file:
     "language": "JA",
     "lemma": "飲む",
     "reading_or_ipa": "のむ",
-    "meaning_zh": "喝下"
+    "meaning_zh": "喝"
   },
   {
     "language": "FR",
     "lemma": "bonjour",
-    "meaning_zh": "您好"
+    "meaning_zh": "你好"
   }
 ]
 ```
 
-To use the OpenAI Responses API provider, set `OPENAI_API_KEY` and optionally `OPENAI_BASE_URL`, then run:
+OpenAI-compatible providers are supported through environment variables:
 
-`python scripts/translate_normalized_words.py --provider openai --model gpt-4.1-mini`
+```powershell
+$env:OPENAI_API_KEY = "<your-key>"
+$env:OPENAI_BASE_URL = "https://api.openai.com/v1"
+python scripts/translate_normalized_words.py --provider openai --model gpt-4.1-mini
+```
 
-To validate translated real-source samples with the same provider selection:
+Local OpenAI-compatible servers such as Ollama can also be used:
 
-`python scripts/validate_real_source_translations.py --provider openai --model gpt-4.1-mini --limit 50`
+```powershell
+$env:OPENAI_API_KEY = "ollama"
+$env:OPENAI_BASE_URL = "http://127.0.0.1:11434/v1"
+python scripts/translate_normalized_words.py --provider openai --model qwen2.5:3b
+```
 
-## Android Self-Use Verification
+## Verification
 
-From `android-app/`:
+Core checks used during development:
 
-1. `.\gradlew.bat compileDebugUnitTestKotlin`
-2. `.\gradlew.bat compileDebugAndroidTestKotlin`
-3. `.\gradlew.bat assembleRelease`
+```powershell
+python -m pytest -q tests/test_ja_learning_levels.py tests/test_sqlite_builder.py tests/test_query_service.py
+cd android-app
+.\gradlew.bat :app:compileDebugKotlin :app:compileDebugUnitTestKotlin
+.\gradlew.bat :app:assembleDebug
+```
 
-For real-device smoke checks after installation:
+For real-device smoke checks:
 
-- watch `logcat` for `DictionaryAssetInstaller` to see first-launch copy duration
-- watch `logcat` for `DictionaryVocabGateway` to see search/detail timing
-- search a few known Japanese and French words
-- add a word to the learning list and reopen the app
+- Install the debug APK.
+- Watch `DictionaryAssetInstaller` logs for first-launch dictionary copy.
+- Watch `DictionaryVocabGateway` logs for search and detail timings.
+- Search known Japanese and French words.
+- Start a learning session and verify Japanese kana + romaji are both shown.
+- Star a word, close the app, reopen it, and confirm persistence.
 
-If `testDebugUnitTest` reports `ClassNotFoundException` in this `E:\aiproduct\安卓单词软件\content\android-app` workspace, treat it as a local Gradle/JUnit path issue and rely on compile tasks plus device smoke checks until the workspace path problem is resolved.
+## Repository Hygiene
+
+The repository tracks source code, tests, docs, and small placeholders. It intentionally does not track:
+
+- Raw downloaded sources.
+- Generated SQLite packages.
+- Translation caches.
+- Android build outputs.
+- APK files.
+- Local API keys or local properties.
+
+See [.gitignore](.gitignore) and [android-app/.gitignore](android-app/.gitignore) for details.
+
+## Roadmap
+
+- Expand Japanese level coverage beyond direct JLPT matches.
+- Add stricter quality gates for AI-assisted level classification.
+- Improve French learning-path ranking.
+- Add first-run onboarding and language-level selection.
+- Prepare release signing and distribution workflow.
+
+## License
+
+No license has been selected yet. Treat this repository as private/proprietary unless a license is added.
