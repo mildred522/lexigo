@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">沉浸背词</string>
+    <string name="search_title">搜索单词</string>
+    <string name="search_hint">输入单词或中文释义</string>
+    <string name="search_idle">输入内容后开始搜索。</string>
+    <string name="search_empty">没有找到匹配结果。</string>
+    <string name="search_star">加入星标</string>
+    <string name="search_starred">已星标</string>
+    <string name="search_detail_title">词条详情</string>
+    <string name="search_detail_action">查看详情</string>
+    <string name="search_detail_close">收起详情</string>
+    <string name="action_speak">朗读</string>
+
+    <string name="tab_search">搜索</string>
+    <string name="tab_learning">学习</string>
+    <string name="tab_starred">星标</string>
+    <string name="tab_review">复习</string>
+    <string name="tab_stats">统计</string>
+
+    <string name="language_japanese">日语</string>
+    <string name="language_french">法语</string>
+
+    <string name="learning_title">学习模块</string>
+    <string name="learning_pick_language">选择语言后开始新一轮 10 词学习。</string>
+    <string name="learning_choice_progress">选择题 %1$d / %2$d</string>
+    <string name="learning_spelling_progress">拼写题 %1$d / %2$d</string>
+    <string name="learning_spelling_input">输入正确拼写</string>
+    <string name="learning_hint">提示</string>
+    <string name="learning_hint_value">提示：%1$s</string>
+    <string name="learning_submit">提交</string>
+    <string name="learning_continue">下一题</string>
+    <string name="learning_finish_feedback">完成本词反馈</string>
+    <string name="learning_summary_title">学习完成</string>
+    <string name="learning_summary_body">本轮共完成 %1$d 个单词。</string>
+    <string name="learning_restart">再来一轮</string>
+
+    <string name="starred_title">星标单词</string>
+    <string name="starred_empty">还没有星标单词。</string>
+    <string name="starred_remove">取消星标</string>
+
+    <string name="review_title">复习模块</string>
+    <string name="review_empty">当前没有到期复习词。</string>
+    <string name="review_queue_count">待复习 %1$d 词</string>
+    <string name="review_spelling_prompt">根据中文释义写出单词</string>
+    <string name="review_continue">下一题</string>
+    <string name="review_finish_feedback">完成本词反馈</string>
+    <string name="review_summary_title">复习完成</string>
+    <string name="review_summary_body">本轮共处理 %1$d 个复习词。</string>
+    <string name="review_reload">重新加载复习</string>
+
+    <string name="stats_title">统计与设置</string>
+    <string name="stats_starred_count">星标总数：%1$d</string>
+    <string name="stats_language_summary">%1$s：已学 %2$d，待复习 %3$d</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_default_language">默认学习语言：%1$s</string>
+    <string name="settings_default_japanese">设为默认日语</string>
+    <string name="settings_default_french">设为默认法语</string>
+    <string name="settings_auto_resume">自动恢复未完成会话</string>
+    <string name="settings_french_accent_insensitive">法语拼写忽略重音</string>
+</resources>

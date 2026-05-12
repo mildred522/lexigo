@@ -28,4 +28,6 @@ norecursedirs = [
   "dist",
   ".codex-review-dist",
   ".codex-review-tmp",
+  "pytest_temp_root",
+  "pytest_temp_root_simple2",
 ]

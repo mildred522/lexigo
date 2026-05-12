@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="daily_cover_title">今日封面</string>
+    <string name="daily_cover_date">%1$s</string>
+    <string name="daily_cover_today_studied">今日已学 %1$d</string>
+    <string name="daily_cover_due_today">待复习 %1$d</string>
+    <string name="daily_cover_streak">连续 %1$d 天</string>
+
+    <string name="achievement_title">学习进度</string>
+    <string name="achievement_streak">连续学习</string>
+    <string name="achievement_today_studied">今日已学</string>
+    <string name="achievement_due_today">今日待复习</string>
+    <string name="achievement_starred">星标总数</string>
+    <string name="achievement_japanese_total">日语已学</string>
+    <string name="achievement_french_total">法语已学</string>
+    <string name="achievement_unit_day">%1$d 天</string>
+    <string name="achievement_unit_word">%1$d 词</string>
+
+    <string name="settings_personalization_title">个性化</string>
+    <string name="settings_background_title">背景</string>
+    <string name="settings_background_builtin">默认背景</string>
+    <string name="settings_background_pick_image">从相册选图</string>
+    <string name="settings_background_restore_default">清除自定义图片</string>
+    <string name="settings_background_use_custom">启用自定义背景</string>
+    <string name="settings_background_custom_ready">已选择自定义图片</string>
+    <string name="settings_background_custom_empty">还没有选择自定义图片</string>
+    <string name="settings_daily_cover_toggle">学习页显示每日封面</string>
+    <string name="background_theme_aurora">晨雾</string>
+    <string name="background_theme_sunrise">日出</string>
+    <string name="background_theme_forest">林间</string>
+    <string name="background_theme_nightfall">夜潮</string>
+</resources>

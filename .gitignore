@@ -6,3 +6,14 @@ sources/
 artifacts/
 *.sqlite
 *.db
+pytest_cache/
+pytest_temp_root/
+pytest_temp_root_simple2/
+.android-local/
+.gradle-local/
+android-app/.gradle/
+android-app/.kotlin/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
+*.apk

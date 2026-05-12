@@ -1,0 +1,30 @@
+[
+  {
+    "id": "1001",
+    "kanji": [{"text": "食べる"}],
+    "kana": [{"text": "たべる", "common": true}],
+    "sense": [
+      {
+        "gloss": [
+          {"lang": "eng", "text": "to eat"},
+          {"lang": "zho", "text": "吃"}
+        ],
+        "partOfSpeech": ["verb"]
+      }
+    ]
+  }
+  ,
+  {
+    "id": "1002",
+    "kanji": [{"text": "飲む"}],
+    "kana": [{"text": "のむ"}],
+    "sense": [
+      {
+        "gloss": [
+          {"lang": "eng", "text": "to drink"}
+        ],
+        "partOfSpeech": ["verb"]
+      }
+    ]
+  }
+]
