@@ -71,6 +71,26 @@ class LearningSessionReducerTest {
     }
 
     @Test
+    fun buildSession_forJapaneseWordFormsUsesMeaningPromptAndKanaOptions() {
+        val builder = LearningSessionBuilder(random = kotlin.random.Random(0))
+        val correct = learningWord(id = 111L, lemma = "お菓子", meaningZh = "snack")
+        val distractor = learningWord(id = 112L, lemma = "お金", meaningZh = "money")
+
+        val session = builder.build(
+            language = LearningLanguage.JAPANESE,
+            words = listOf(correct),
+            distractorPool = emptyList(),
+            wordDistractorPool = listOf(distractor),
+            choiceOptionDisplayMode = ChoiceOptionDisplayMode.KANA_ONLY,
+        )
+
+        val question = requireNotNull(session.currentChoiceQuestion)
+        assertEquals("snack", question.prompt)
+        assertTrue(question.options.any { it.isCorrect && it.value == "111" })
+        assertTrue(question.options.any { !it.isCorrect && it.value == "112" })
+    }
+
+    @Test
     fun skipCurrentWord_inChoiceStageRemovesWordWithoutScoringIt() {
         val first = learningWord(id = 201L, lemma = "first", meaningZh = "one")
         val second = learningWord(id = 202L, lemma = "second", meaningZh = "two")

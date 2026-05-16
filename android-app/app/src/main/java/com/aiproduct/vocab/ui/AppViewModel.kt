@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiproduct.vocab.domain.learning.LearningLanguage
 import com.aiproduct.vocab.domain.learning.LearningBand
+import com.aiproduct.vocab.domain.learning.ChoiceOptionDisplayMode
 import com.aiproduct.vocab.domain.learning.LearningSession
 import com.aiproduct.vocab.domain.learning.LearningSessionBuilder
 import com.aiproduct.vocab.domain.learning.LearningSessionReducer
@@ -584,12 +585,16 @@ class AppViewModel(
                 ),
             )
         }
-        val words = runCatching { withContext(dispatcher) { gateway.learningWords(language, learningBand, limit = 10) } }.getOrDefault(emptyList())
+        val candidateWords = runCatching { withContext(dispatcher) { gateway.learningWords(language, learningBand, limit = 40) } }.getOrDefault(emptyList())
+        val words = candidateWords.take(10)
+        val wordDistractors = candidateWords.drop(10).map(StudyWordItem::from)
         val distractors = runCatching { withContext(dispatcher) { gateway.distractorMeanings(language, limit = 64) } }.getOrDefault(emptyList())
         val session = learningSessionBuilder.build(
             language = language,
             words = words.map(StudyWordItem::from),
             distractorPool = distractors,
+            wordDistractorPool = wordDistractors,
+            choiceOptionDisplayMode = language.choiceOptionDisplayMode(learningBand),
             deduplicatePrompts = true,
         )
         _uiState.update { current ->
@@ -844,3 +849,14 @@ private fun LearningBand.displayName(): String = when (this) {
     LearningBand.INTERMEDIATE -> "进阶"
     LearningBand.ADVANCED -> "高级"
 }
+
+private fun LearningLanguage.choiceOptionDisplayMode(band: LearningBand): ChoiceOptionDisplayMode =
+    if (this != LearningLanguage.JAPANESE) {
+        ChoiceOptionDisplayMode.MEANING
+    } else {
+        when (band) {
+            LearningBand.BEGINNER -> ChoiceOptionDisplayMode.KANA_ONLY
+            LearningBand.INTERMEDIATE -> ChoiceOptionDisplayMode.KANJI_KANA
+            LearningBand.ADVANCED -> ChoiceOptionDisplayMode.KANJI_ONLY
+        }
+    }

@@ -117,6 +117,8 @@ private fun MeaningOption.toJson(): JSONObject = JSONObject().apply {
     put("label", label)
     put("meaning_zh", meaningZh)
     put("is_correct", isCorrect)
+    put("value", value)
+    put("secondary_text", secondaryText)
 }
 
 private fun SessionFeedback.toJson(): JSONObject = JSONObject().apply {
@@ -199,6 +201,8 @@ private fun JSONArray.toMeaningOptions(): List<MeaningOption> = buildList {
                 label = option.optString("label"),
                 meaningZh = option.optString("meaning_zh"),
                 isCorrect = option.optBoolean("is_correct", false),
+                value = option.optString("value", option.optString("meaning_zh")),
+                secondaryText = option.optString("secondary_text").takeIf { it.isNotBlank() },
             ),
         )
     }

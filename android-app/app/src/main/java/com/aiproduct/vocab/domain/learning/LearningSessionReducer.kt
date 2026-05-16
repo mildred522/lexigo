@@ -7,7 +7,7 @@ class LearningSessionReducer {
     ): LearningSession {
         val current = session.currentChoiceWord ?: return session
         val question = session.currentChoiceQuestion ?: return session
-        val isCorrect = question.options.any { it.meaningZh == selectedMeaning && it.isCorrect }
+        val isCorrect = question.options.any { it.value == selectedMeaning && it.isCorrect }
         val updatedWords = session.words.map { progress ->
             if (progress.word.id != current.word.id) {
                 progress

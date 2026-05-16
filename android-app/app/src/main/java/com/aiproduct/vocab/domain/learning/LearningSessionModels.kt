@@ -18,6 +18,8 @@ data class MeaningOption(
     val label: String,
     val meaningZh: String,
     val isCorrect: Boolean,
+    val value: String = meaningZh,
+    val secondaryText: String? = null,
 )
 
 data class ChoiceQuestion(
@@ -73,4 +75,11 @@ enum class ReviewOutcome {
     PERFECT,
     PARTIAL,
     FAIL,
+}
+
+enum class ChoiceOptionDisplayMode {
+    MEANING,
+    KANA_ONLY,
+    KANJI_KANA,
+    KANJI_ONLY,
 }

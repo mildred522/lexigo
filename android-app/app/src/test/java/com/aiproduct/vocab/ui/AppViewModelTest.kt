@@ -253,7 +253,7 @@ class AppViewModelTest {
             viewModel.onSelectLearningLanguage(LearningLanguage.JAPANESE)
             advanceUntilIdle()
 
-            viewModel.onChooseLearningMeaning("猫")
+            viewModel.onChooseLearningMeaning(requireNotNull(viewModel.uiState.value.learning.session).correctChoiceValue())
             advanceUntilIdle()
 
             val feedbackState = requireNotNull(viewModel.uiState.value.learning.session)
@@ -298,7 +298,8 @@ class AppViewModelTest {
             advanceUntilIdle()
 
             val question = requireNotNull(viewModel.uiState.value.learning.session?.currentChoiceQuestion)
-            assertTrue(question.options.any { it.isCorrect && it.meaningZh == "hello meaning" })
+            assertEquals("hello meaning", question.prompt)
+            assertTrue(question.options.any { it.isCorrect && it.meaningZh == "hello" })
         } finally {
             Dispatchers.resetMain()
         }
@@ -324,7 +325,7 @@ class AppViewModelTest {
             advanceUntilIdle()
             viewModel.onStartPromotionTest()
             advanceUntilIdle()
-            viewModel.onChooseLearningMeaning("cat")
+            viewModel.onChooseLearningMeaning(requireNotNull(viewModel.uiState.value.learning.session).correctChoiceValue())
             advanceUntilIdle()
             viewModel.onContinueLearning()
             advanceUntilIdle()
@@ -361,7 +362,7 @@ class AppViewModelTest {
             advanceUntilIdle()
             viewModel.onStartPromotionTest()
             advanceUntilIdle()
-            viewModel.onChooseLearningMeaning("dog")
+            viewModel.onChooseLearningMeaning(requireNotNull(viewModel.uiState.value.learning.session).correctChoiceValue())
             advanceUntilIdle()
             viewModel.onContinueLearning()
             advanceUntilIdle()
@@ -432,6 +433,9 @@ private fun sampleSession(
         spellingOrder = listOf(item.id),
     )
 }
+
+private fun LearningSession.correctChoiceValue(): String =
+    requireNotNull(currentChoiceQuestion).options.first { it.isCorrect }.value
 
 private class FakeVocabGateway(
     private val searchResultsByQuery: Map<String, List<WordSummary>> = emptyMap(),

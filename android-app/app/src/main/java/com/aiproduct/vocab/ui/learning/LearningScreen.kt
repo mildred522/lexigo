@@ -139,6 +139,8 @@ fun LearningScreen(
             when (session.stage) {
                 LearningStage.CHOICE -> {
                     val currentWord = session.currentChoiceWord?.word ?: return@StudyFlowLayout
+                    val question = session.currentChoiceQuestion ?: return@StudyFlowLayout
+                    val usesMeaningPrompt = question.prompt != currentWord.lemma
                     StudyWordPrompt(
                         word = currentWord,
                         progressText = studyProgressText(
@@ -146,6 +148,9 @@ fun LearningScreen(
                             total = session.words.size,
                         ),
                         showMeaning = false,
+                        promptOverride = question.prompt,
+                        showReading = !usesMeaningPrompt,
+                        showSpeaker = !usesMeaningPrompt,
                         onSpeak = { onSpeak(currentWord) },
                     )
                 }
@@ -243,16 +248,18 @@ fun LearningScreen(
                         options = question.options,
                         onChooseMeaning = onChooseMeaning,
                     )
-                    Text(
-                        text = stringResource(id = R.string.action_speak),
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .clip(RoundedCornerShape(999.dp))
-                            .clickable { session.currentChoiceWord?.word?.let(onSpeak) }
-                            .padding(horizontal = 18.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = StudyMuted,
-                    )
+                    if (question.prompt == session.currentChoiceWord?.word?.lemma) {
+                        Text(
+                            text = stringResource(id = R.string.action_speak),
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .clip(RoundedCornerShape(999.dp))
+                                .clickable { session.currentChoiceWord?.word?.let(onSpeak) }
+                                .padding(horizontal = 18.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = StudyMuted,
+                        )
+                    }
                 }
 
                 LearningStage.SPELLING -> {
@@ -430,6 +437,8 @@ internal fun StudyWordPrompt(
     onSpeak: () -> Unit,
     modifier: Modifier = Modifier,
     promptOverride: String? = null,
+    showReading: Boolean = true,
+    showSpeaker: Boolean = true,
 ) {
     val prompt = promptOverride ?: word.lemma
     Column(
@@ -453,11 +462,12 @@ internal fun StudyWordPrompt(
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
+        if (showReading || showSpeaker) {
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (word.readingOrIpa.isNotBlank()) {
+            if (showReading && word.readingOrIpa.isNotBlank()) {
                 ReadingLines(
                     word = word,
                     color = StudyMuted,
@@ -465,6 +475,7 @@ internal fun StudyWordPrompt(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
             }
+            if (showSpeaker) {
             Surface(
                 modifier = Modifier
                     .size(34.dp)
@@ -478,6 +489,8 @@ internal fun StudyWordPrompt(
                     Text(text = "♪", color = StudyMuted, style = MaterialTheme.typography.labelMedium)
                 }
             }
+            }
+        }
         }
         if (showMeaning) {
             RevealedMeaning(word = word)
@@ -578,7 +591,7 @@ internal fun MinimalMeaningOptions(
         options.forEach { option ->
             MeaningOptionRow(
                 option = option,
-                onClick = { onChooseMeaning(option.meaningZh) },
+                onClick = { onChooseMeaning(option.value) },
             )
         }
     }
@@ -612,12 +625,20 @@ private fun MeaningOptionRow(
             style = MaterialTheme.typography.labelLarge,
             color = StudySage,
         )
-        Text(
-            text = option.meaningZh,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyLarge,
-            color = StudyInk,
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = option.meaningZh,
+                style = MaterialTheme.typography.bodyLarge,
+                color = StudyInk,
+            )
+            option.secondaryText?.let { secondary ->
+                Text(
+                    text = secondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = StudyMuted,
+                )
+            }
+        }
     }
     Box(
         modifier = Modifier
