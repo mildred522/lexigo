@@ -46,6 +46,12 @@ class AiLevelDecision:
     source: str
 
 
+@dataclass(frozen=True, slots=True)
+class BatchClassification:
+    decisions: list[AiLevelDecision]
+    usage: dict[str, int]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Classify high-value Japanese unknown candidates with an AI model.")
     parser.add_argument("--input", type=Path, default=Path("artifacts/learning_levels/ja/ja_unknown_high_value_candidates.jsonl"))
@@ -79,10 +85,11 @@ def main() -> None:
     accepted = 0
     failed = 0
     written = 0
+    usage_totals: dict[str, int] = {}
     with args.output.open("a", encoding="utf-8", newline="\n") as handle:
         for index, batch in enumerate(batches, start=1):
             try:
-                decisions = classify_batch(
+                classified = classify_batch(
                     batch,
                     api_key=api_key,
                     base_url=args.base_url,
@@ -94,6 +101,9 @@ def main() -> None:
                 failed += 1
                 print(f"batch {index}/{len(batches)} failed: {error}", file=sys.stderr)
                 continue
+            decisions = classified.decisions
+            for key, value in classified.usage.items():
+                usage_totals[key] = usage_totals.get(key, 0) + value
             by_id = {decision.word_id: decision for decision in decisions}
             for row in batch:
                 word_id = int(row["word_id"])
@@ -104,7 +114,7 @@ def main() -> None:
                 written += 1
             handle.flush()
             accepted += 1
-            print(f"batch {index}/{len(batches)} ok, decisions={len(decisions)}, written={written}")
+            print(f"batch {index}/{len(batches)} ok, decisions={len(decisions)}, written={written}, usage={classified.usage}")
 
     all_decisions = list(_iter_decisions(args.output))
     db_summary = apply_ai_decisions_to_sqlite(args.db, all_decisions) if args.apply_db else None
@@ -117,6 +127,7 @@ def main() -> None:
             "succeeded_batches": accepted,
             "failed_batches": failed,
             "written_this_run": written,
+            "usage_this_run": usage_totals,
             "elapsed_seconds": round(time.perf_counter() - started, 4),
             "db_write": db_summary,
         },
@@ -133,7 +144,7 @@ def classify_batch(
     model: str,
     auth_header: str,
     timeout: int,
-) -> list[AiLevelDecision]:
+) -> BatchClassification:
     payload = {
         "model": model,
         "temperature": 0.1,
@@ -149,9 +160,18 @@ def classify_batch(
         timeout=timeout,
     )
     response.raise_for_status()
-    content = response.json()["choices"][0]["message"]["content"]
+    payload = response.json()
+    content = payload["choices"][0]["message"]["content"]
     raw_decisions = _extract_json_array(content)
-    return [_normalize_decision(row, batch, source=f"ai:{model}") for row in raw_decisions]
+    usage = {
+        key: int(value)
+        for key, value in payload.get("usage", {}).items()
+        if isinstance(value, int)
+    }
+    return BatchClassification(
+        decisions=[_normalize_decision(row, batch, source=f"ai:{model}") for row in raw_decisions],
+        usage=usage,
+    )
 
 
 def apply_ai_decisions_to_sqlite(db_path: Path, decisions: Iterable[AiLevelDecision]) -> dict[str, int]:
@@ -277,7 +297,10 @@ def _iter_decisions(path: Path) -> Iterable[AiLevelDecision]:
     with path.open(encoding="utf-8") as handle:
         for line in handle:
             if line.strip():
-                yield AiLevelDecision(**json.loads(line))
+                row = json.loads(line)
+                if not isinstance(row.get("source"), str):
+                    row["source"] = "ai:deepseek-chat"
+                yield AiLevelDecision(**row)
 
 
 def _prompt_row(row: dict) -> dict:
@@ -311,7 +334,7 @@ def _extract_json_array(content: str) -> list[dict]:
 def _normalize_decision(raw: dict, batch: list[dict], source: str) -> AiLevelDecision:
     source_rows = {int(row["word_id"]): row for row in batch}
     word_id = int(raw["word_id"])
-    source = source_rows[word_id]
+    source_row = source_rows[word_id]
     level = str(raw.get("level", "needs_review")).strip()
     if level not in VALID_LEVELS:
         level = "needs_review"
@@ -321,10 +344,10 @@ def _normalize_decision(raw: dict, batch: list[dict], source: str) -> AiLevelDec
         decision = "needs_review"
     return AiLevelDecision(
         word_id=word_id,
-        lemma=str(source["lemma"]),
-        reading_or_ipa=str(source["reading_or_ipa"]),
-        meaning_zh=str(source["meaning_zh"]),
-        meaning_source_text=str(source["meaning_source_text"]),
+        lemma=str(source_row["lemma"]),
+        reading_or_ipa=str(source_row["reading_or_ipa"]),
+        meaning_zh=str(source_row["meaning_zh"]),
+        meaning_source_text=str(source_row["meaning_source_text"]),
         level=level,
         confidence=confidence,
         decision=decision,
