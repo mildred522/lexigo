@@ -13,6 +13,7 @@ import com.aiproduct.vocab.data.session.SessionDraftStore
 import com.aiproduct.vocab.data.settings.UserPreferencesStore
 import com.aiproduct.vocab.data.starred.StarredWordStore
 import com.aiproduct.vocab.data.study.StudyRecordStore
+import com.aiproduct.vocab.domain.learning.LearningBand
 import com.aiproduct.vocab.domain.learning.LearningLanguage
 import com.aiproduct.vocab.domain.learning.LearningSession
 import com.aiproduct.vocab.domain.learning.LearningWordProgress
@@ -45,7 +46,7 @@ interface VocabGateway : AutoCloseable {
 
     suspend fun starredWords(): List<WordDetail>
 
-    suspend fun learningWords(language: LearningLanguage, limit: Int = 10): List<WordDetail>
+    suspend fun learningWords(language: LearningLanguage, band: LearningBand, limit: Int = 10): List<WordDetail>
 
     suspend fun distractorMeanings(language: LearningLanguage, limit: Int = 32): List<String>
 
@@ -126,7 +127,7 @@ class DictionaryVocabGateway(
             .mapNotNull { current.repository.detail(it) }
     }
 
-    override suspend fun learningWords(language: LearningLanguage, limit: Int): List<WordDetail> = withContext(ioDispatcher) {
+    override suspend fun learningWords(language: LearningLanguage, band: LearningBand, limit: Int): List<WordDetail> = withContext(ioDispatcher) {
         val current = clients()
         val starredIds = current.starredWordStore.starredWordIds().toSet()
         val selected = mutableListOf<WordDetail>()
@@ -140,6 +141,7 @@ class DictionaryVocabGateway(
             }
             val candidateIds = current.repository.learningCandidateIds(
                 language = language,
+                band = band,
                 limit = batchSize,
                 offset = attempt * batchSize,
             )
@@ -350,11 +352,12 @@ private const val LEARNING_PICK_ATTEMPTS = 6
 
 private suspend fun DictionaryRepository.learningCandidateIds(
     language: LearningLanguage,
+    band: LearningBand,
     limit: Int,
     offset: Int,
 ): List<Long> {
     if (language == LearningLanguage.JAPANESE) {
-        val leveledIds = leveledWordIdsByLanguage(language.code, limit, offset)
+        val leveledIds = leveledWordIdsByLanguage(language.code, band, limit, offset)
         if (leveledIds.isNotEmpty()) {
             return leveledIds
         }

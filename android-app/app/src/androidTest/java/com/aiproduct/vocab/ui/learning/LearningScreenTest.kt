@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aiproduct.vocab.domain.learning.ChoiceQuestion
+import com.aiproduct.vocab.domain.learning.LearningBand
 import com.aiproduct.vocab.domain.learning.LearningLanguage
 import com.aiproduct.vocab.domain.learning.LearningSession
 import com.aiproduct.vocab.domain.learning.LearningStage
@@ -51,7 +52,10 @@ class LearningScreenTest {
                 uiState = LearningUiState(session = session),
                 stats = AppStats(),
                 showDailyCover = false,
+                learningBand = LearningBand.BEGINNER,
+                promotionPerfectPasses = 0,
                 onSelectLanguage = {},
+                onStartPromotionTest = {},
                 onChooseMeaning = {},
                 onSubmitSpelling = {},
                 onRequestHint = {},

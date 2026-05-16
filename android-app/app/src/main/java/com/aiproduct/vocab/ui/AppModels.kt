@@ -1,6 +1,7 @@
 package com.aiproduct.vocab.ui
 
 import com.aiproduct.vocab.domain.learning.LearningLanguage
+import com.aiproduct.vocab.domain.learning.LearningBand
 
 enum class BackgroundTheme {
     AURORA,
@@ -29,6 +30,9 @@ data class AppStats(
 
 data class UserPreferences(
     val defaultLearningLanguage: LearningLanguage = LearningLanguage.JAPANESE,
+    val learningBand: LearningBand = LearningBand.BEGINNER,
+    val beginnerPromotionPerfectPasses: Int = 0,
+    val intermediatePromotionPerfectPasses: Int = 0,
     val autoResumeSessions: Boolean = true,
     val frenchAccentInsensitive: Boolean = true,
     val backgroundTheme: BackgroundTheme = BackgroundTheme.AURORA,

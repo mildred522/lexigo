@@ -50,9 +50,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aiproduct.vocab.R
+import com.aiproduct.vocab.domain.learning.LearningBand
 import com.aiproduct.vocab.domain.learning.LearningLanguage
 import com.aiproduct.vocab.domain.learning.LearningStage
 import com.aiproduct.vocab.domain.learning.MeaningOption
+import com.aiproduct.vocab.domain.learning.next
 import com.aiproduct.vocab.ui.AppStats
 import com.aiproduct.vocab.ui.LearningUiState
 import com.aiproduct.vocab.ui.study.StudyWordCard
@@ -73,7 +75,10 @@ fun LearningScreen(
     uiState: LearningUiState,
     stats: AppStats,
     showDailyCover: Boolean,
+    learningBand: LearningBand,
+    promotionPerfectPasses: Int,
     onSelectLanguage: (LearningLanguage) -> Unit,
+    onStartPromotionTest: () -> Unit,
     onChooseMeaning: (String) -> Unit,
     onSubmitSpelling: (String) -> Unit,
     onRequestHint: () -> Unit,
@@ -101,6 +106,11 @@ fun LearningScreen(
             }
 
             if (session == null) {
+                LearningBandStatus(
+                    learningBand = learningBand,
+                    promotionPerfectPasses = promotionPerfectPasses,
+                    promotionTestTargetBand = uiState.promotionTestTargetBand,
+                )
                 Text(
                     text = uiState.message ?: stringResource(id = R.string.learning_pick_language),
                     style = MaterialTheme.typography.bodyLarge,
@@ -112,6 +122,11 @@ fun LearningScreen(
             }
 
             val feedback = session.feedback
+            LearningBandStatus(
+                learningBand = learningBand,
+                promotionPerfectPasses = promotionPerfectPasses,
+                promotionTestTargetBand = uiState.promotionTestTargetBand,
+            )
             if (feedback != null && uiState.feedbackWord != null) {
                 StudyWordCard(
                     word = uiState.feedbackWord,
@@ -187,6 +202,14 @@ fun LearningScreen(
                         onClick = { onSelectLanguage(LearningLanguage.FRENCH) },
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (learningBand.next() != null) {
+                        QuietStudyButton(
+                            text = "晋级测试 $promotionPerfectPasses/3",
+                            onClick = onStartPromotionTest,
+                            emphasized = false,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
                 return@StudyFlowLayout
             }
@@ -279,12 +302,42 @@ fun LearningScreen(
                         emphasized = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (learningBand.next() != null) {
+                        QuietStudyButton(
+                            text = "晋级测试 $promotionPerfectPasses/3",
+                            onClick = onStartPromotionTest,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
 
                 LearningStage.LANGUAGE_PICKER -> Unit
             }
         },
     )
+}
+
+@Composable
+private fun LearningBandStatus(
+    learningBand: LearningBand,
+    promotionPerfectPasses: Int,
+    promotionTestTargetBand: LearningBand?,
+) {
+    val label = promotionTestTargetBand?.let { "晋级测试：${it.displayName()}" }
+        ?: learningBand.next()?.let { "当前阶段：${learningBand.displayName()} · $promotionPerfectPasses/3" }
+        ?: "当前阶段：${learningBand.displayName()}"
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = StudySageSoft,
+        border = BorderStroke(1.dp, StudyLine),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = StudyMuted,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+        )
+    }
 }
 
 @Composable
@@ -309,6 +362,12 @@ internal fun StudyFlowHeader(
             }
         }
     }
+}
+
+private fun LearningBand.displayName(): String = when (this) {
+    LearningBand.BEGINNER -> "新手"
+    LearningBand.INTERMEDIATE -> "进阶"
+    LearningBand.ADVANCED -> "高级"
 }
 
 @Composable

@@ -2,6 +2,7 @@ package com.aiproduct.vocab.ui
 
 import androidx.annotation.StringRes
 import com.aiproduct.vocab.R
+import com.aiproduct.vocab.domain.learning.LearningBand
 import com.aiproduct.vocab.domain.learning.LearningLanguage
 import com.aiproduct.vocab.domain.learning.LearningSession
 import com.aiproduct.vocab.ui.search.SearchUiState
@@ -30,6 +31,7 @@ enum class AppTab(
 data class LearningUiState(
     val selectedLanguage: LearningLanguage? = null,
     val session: LearningSession? = null,
+    val promotionTestTargetBand: LearningBand? = null,
     val feedbackWord: StudyWordItem? = null,
     val isLoading: Boolean = false,
     val message: String? = null,

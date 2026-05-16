@@ -2,6 +2,7 @@ package com.aiproduct.vocab.data.db
 
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
+import com.aiproduct.vocab.domain.learning.LearningBand
 import com.aiproduct.vocab.domain.model.WordDetail
 import com.aiproduct.vocab.domain.model.WordSummary
 
@@ -112,6 +113,7 @@ class WordSearchDao(
 
     fun leveledWordIdsByLanguage(
         language: String,
+        band: LearningBand,
         limit: Int,
         offset: Int,
     ): List<Long> {
@@ -124,8 +126,7 @@ class WordSearchDao(
             FROM word_learning_levels l
             JOIN words w ON w.id = l.word_id
             WHERE LOWER(l.language) = LOWER(?)
-              AND l.learnable = 1
-              AND l.review_status = 'accepted'
+              AND ${band.sqlPredicate()}
               AND TRIM(COALESCE(w.lemma, '')) != ''
               AND (
                     TRIM(COALESCE(w.meaning_zh, '')) != ''
@@ -213,6 +214,44 @@ class WordSearchDao(
         """.trimIndent(),
         arrayOf(tableName),
     ).use { cursor -> cursor.moveToFirst() }
+}
+
+private fun LearningBand.sqlPredicate(): String = when (this) {
+    LearningBand.BEGINNER ->
+        """
+        (
+          l.review_status = 'accepted'
+          AND (
+            l.level = 'N5'
+            OR (l.level = 'N4' AND l.confidence >= 0.90)
+          )
+        )
+        """.trimIndent()
+
+    LearningBand.INTERMEDIATE ->
+        """
+        (
+          l.review_status = 'accepted'
+          AND (
+            l.level IN ('N4', 'N3')
+            OR (l.level = 'N2' AND l.confidence >= 0.85)
+          )
+        )
+        """.trimIndent()
+
+    LearningBand.ADVANCED ->
+        """
+        (
+          (
+            l.review_status = 'accepted'
+            AND l.level IN ('N2', 'N1')
+          )
+          OR (
+            l.review_status = 'advanced'
+            AND l.confidence >= 0.85
+          )
+        )
+        """.trimIndent()
 }
 
 internal data class SearchSpec(

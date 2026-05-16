@@ -141,7 +141,10 @@ fun AppRoot() {
                     uiState = uiState.learning,
                     stats = uiState.statsSettings.stats,
                     showDailyCover = uiState.statsSettings.preferences.showDailyCover,
+                    learningBand = uiState.statsSettings.preferences.learningBand,
+                    promotionPerfectPasses = uiState.statsSettings.preferences.currentPromotionPerfectPasses(),
                     onSelectLanguage = viewModel::onSelectLearningLanguage,
+                    onStartPromotionTest = viewModel::onStartPromotionTest,
                     onChooseMeaning = viewModel::onChooseLearningMeaning,
                     onSubmitSpelling = viewModel::onSubmitLearningSpelling,
                     onRequestHint = viewModel::onRequestLearningHint,
@@ -199,6 +202,12 @@ private fun StudyWordItem.speechText(): String = if (
     readingOrIpa.ifBlank { lemma }
 } else {
     lemma
+}
+
+private fun UserPreferences.currentPromotionPerfectPasses(): Int = when (learningBand) {
+    com.aiproduct.vocab.domain.learning.LearningBand.BEGINNER -> beginnerPromotionPerfectPasses
+    com.aiproduct.vocab.domain.learning.LearningBand.INTERMEDIATE -> intermediatePromotionPerfectPasses
+    com.aiproduct.vocab.domain.learning.LearningBand.ADVANCED -> 0
 }
 
 private fun appViewModelFactory(context: Context): ViewModelProvider.Factory =

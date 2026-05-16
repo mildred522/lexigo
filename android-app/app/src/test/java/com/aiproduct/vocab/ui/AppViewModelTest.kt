@@ -1,6 +1,7 @@
 package com.aiproduct.vocab.ui
 
 import com.aiproduct.vocab.domain.learning.ChoiceQuestion
+import com.aiproduct.vocab.domain.learning.LearningBand
 import com.aiproduct.vocab.domain.learning.LearningLanguage
 import com.aiproduct.vocab.domain.learning.LearningSession
 import com.aiproduct.vocab.domain.learning.LearningStage
@@ -302,6 +303,79 @@ class AppViewModelTest {
             Dispatchers.resetMain()
         }
     }
+
+    @Test
+    fun promotionTest_usesNextBandAndCountsPerfectPass() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            val word = sampleWordDetail(id = 50L, language = "ja", lemma = "neko", meaningZh = "cat")
+            val gateway = FakeVocabGateway(
+                detailsById = mutableMapOf(word.id to word),
+                learningWordsByLanguage = mapOf(LearningLanguage.JAPANESE to listOf(word)),
+                distractorMeaningsByLanguage = mapOf(LearningLanguage.JAPANESE to listOf("dog", "school", "weather")),
+            )
+            val viewModel = AppViewModel(
+                gateway = gateway,
+                dispatcher = dispatcher,
+                nowMillisProvider = { 5_000L },
+            )
+
+            advanceUntilIdle()
+            viewModel.onStartPromotionTest()
+            advanceUntilIdle()
+            viewModel.onChooseLearningMeaning("cat")
+            advanceUntilIdle()
+            viewModel.onContinueLearning()
+            advanceUntilIdle()
+            viewModel.onSubmitLearningSpelling("neko")
+            advanceUntilIdle()
+
+            assertEquals(listOf(LearningBand.INTERMEDIATE), gateway.requestedLearningBands)
+            assertEquals(LearningBand.BEGINNER, viewModel.uiState.value.statsSettings.preferences.learningBand)
+            assertEquals(1, viewModel.uiState.value.statsSettings.preferences.beginnerPromotionPerfectPasses)
+            assertTrue(gateway.savedLearningSessions.isEmpty())
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun promotionTest_thirdPerfectPassPromotesBand() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            val word = sampleWordDetail(id = 51L, language = "ja", lemma = "inu", meaningZh = "dog")
+            val gateway = FakeVocabGateway(
+                detailsById = mutableMapOf(word.id to word),
+                learningWordsByLanguage = mapOf(LearningLanguage.JAPANESE to listOf(word)),
+                distractorMeaningsByLanguage = mapOf(LearningLanguage.JAPANESE to listOf("cat", "school", "weather")),
+                preferences = UserPreferences(beginnerPromotionPerfectPasses = 2),
+            )
+            val viewModel = AppViewModel(
+                gateway = gateway,
+                dispatcher = dispatcher,
+                nowMillisProvider = { 5_000L },
+            )
+
+            advanceUntilIdle()
+            viewModel.onStartPromotionTest()
+            advanceUntilIdle()
+            viewModel.onChooseLearningMeaning("dog")
+            advanceUntilIdle()
+            viewModel.onContinueLearning()
+            advanceUntilIdle()
+            viewModel.onSubmitLearningSpelling("inu")
+            advanceUntilIdle()
+
+            val preferences = viewModel.uiState.value.statsSettings.preferences
+            assertEquals(LearningBand.INTERMEDIATE, preferences.learningBand)
+            assertEquals(0, preferences.beginnerPromotionPerfectPasses)
+            assertTrue(gateway.savedLearningSessions.isEmpty())
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
 }
 
 private fun sampleWordDetail(
@@ -376,6 +450,7 @@ private class FakeVocabGateway(
     val savedLearningSessions = mutableListOf<List<LearningWordProgress>>()
     val savedReviewSessions = mutableListOf<List<LearningWordProgress>>()
     val savedPreferencesHistory = mutableListOf<UserPreferences>()
+    val requestedLearningBands = mutableListOf<LearningBand>()
 
     override suspend fun search(query: String): List<WordSummary> = searchResultsByQuery[query].orEmpty()
 
@@ -393,8 +468,10 @@ private class FakeVocabGateway(
 
     override suspend fun starredWords(): List<WordDetail> = starredIds.mapNotNull(detailsById::get)
 
-    override suspend fun learningWords(language: LearningLanguage, limit: Int): List<WordDetail> =
-        learningWordsByLanguage[language].orEmpty().take(limit)
+    override suspend fun learningWords(language: LearningLanguage, band: LearningBand, limit: Int): List<WordDetail> {
+        requestedLearningBands += band
+        return learningWordsByLanguage[language].orEmpty().take(limit)
+    }
 
     override suspend fun distractorMeanings(language: LearningLanguage, limit: Int): List<String> =
         distractorMeaningsByLanguage[language].orEmpty().take(limit)

@@ -3,10 +3,12 @@ package com.aiproduct.vocab.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aiproduct.vocab.domain.learning.LearningLanguage
+import com.aiproduct.vocab.domain.learning.LearningBand
 import com.aiproduct.vocab.domain.learning.LearningSession
 import com.aiproduct.vocab.domain.learning.LearningSessionBuilder
 import com.aiproduct.vocab.domain.learning.LearningSessionReducer
 import com.aiproduct.vocab.domain.learning.LearningStage
+import com.aiproduct.vocab.domain.learning.next
 import com.aiproduct.vocab.domain.learning.SpellingAnswerEvaluator
 import com.aiproduct.vocab.domain.learning.SpellingHintResolver
 import com.aiproduct.vocab.ui.debug.AppDebugLog
@@ -65,7 +67,7 @@ class AppViewModel(
             AppDebugLog.add("LearningWarmUp", "start language=${language.code}")
             runCatching {
                 withContext(dispatcher) {
-                    gateway.learningWords(language, limit = 1)
+                    gateway.learningWords(language, uiState.value.statsSettings.preferences.learningBand, limit = 1)
                     gateway.distractorMeanings(language, limit = 8)
                 }
             }.onSuccess {
@@ -186,6 +188,16 @@ class AppViewModel(
         viewModelScope.launch { loadLearningSession(language) }
     }
 
+    fun onStartPromotionTest() {
+        val preferences = uiState.value.statsSettings.preferences
+        val targetBand = preferences.learningBand.next() ?: return
+        val language = uiState.value.learning.selectedLanguage ?: preferences.defaultLearningLanguage
+        viewModelScope.launch {
+            withContext(dispatcher) { gateway.saveLearningDraft(null) }
+            loadLearningSession(language, promotionTestTargetBand = targetBand)
+        }
+    }
+
     fun onChooseLearningMeaning(meaningZh: String) {
         val session = uiState.value.learning.session ?: return
         val updated = learningSessionReducer.submitChoice(session, meaningZh)
@@ -197,11 +209,14 @@ class AppViewModel(
                 ),
             )
         }
-        persistLearningDraft(updated)
+        if (uiState.value.learning.promotionTestTargetBand == null) {
+            persistLearningDraft(updated)
+        }
     }
 
     fun onSubmitLearningSpelling(answer: String) {
         val session = uiState.value.learning.session ?: return
+        val promotionTestTargetBand = uiState.value.learning.promotionTestTargetBand
         viewModelScope.launch {
             val currentWord = session.currentSpellingWord?.word ?: return@launch
             val updated = learningSessionReducer.submitSpellingResult(
@@ -213,20 +228,31 @@ class AppViewModel(
                 ),
             )
             if (session.stage != LearningStage.SUMMARY && updated.stage == LearningStage.SUMMARY) {
-                withContext(dispatcher) {
-                    gateway.saveLearningSession(updated.language, updated.words, nowMillisProvider())
+                if (promotionTestTargetBand == null) {
+                    withContext(dispatcher) {
+                        gateway.saveLearningSession(updated.language, updated.words, nowMillisProvider())
+                        gateway.saveLearningDraft(null)
+                    }
+                    refreshStats()
+                } else {
+                    withContext(dispatcher) { gateway.saveLearningDraft(null) }
                 }
-                withContext(dispatcher) { gateway.saveLearningDraft(null) }
-                refreshStats()
             } else {
-                persistLearningDraft(updated)
+                if (promotionTestTargetBand == null) {
+                    persistLearningDraft(updated)
+                }
+            }
+            val completionMessage = if (updated.stage == LearningStage.SUMMARY) {
+                promotionTestTargetBand?.let { applyPromotionTestResult(updated, it) } ?: "本轮学习已完成"
+            } else {
+                null
             }
             _uiState.update { current ->
                 current.copy(
                     learning = current.learning.copy(
                         session = updated,
                         feedbackWord = updated.findFeedbackWord(),
-                        message = if (updated.stage == LearningStage.SUMMARY) "本轮学习已完成" else current.learning.message,
+                        message = completionMessage ?: current.learning.message,
                     ),
                 )
             }
@@ -241,11 +267,14 @@ class AppViewModel(
         _uiState.update { current ->
             current.copy(learning = current.learning.copy(session = updated))
         }
-        persistLearningDraft(updated)
+        if (uiState.value.learning.promotionTestTargetBand == null) {
+            persistLearningDraft(updated)
+        }
     }
 
     fun onSkipLearningWord() {
         val session = uiState.value.learning.session ?: return
+        val promotionTestTargetBand = uiState.value.learning.promotionTestTargetBand
         val updated = learningSessionReducer.skipCurrentWord(session)
         _uiState.update { current ->
             current.copy(
@@ -258,13 +287,23 @@ class AppViewModel(
         }
         viewModelScope.launch {
             if (updated.stage == LearningStage.SUMMARY) {
-                withContext(dispatcher) {
-                    gateway.saveLearningSession(updated.language, updated.words, nowMillisProvider())
-                    gateway.saveLearningDraft(null)
+                if (promotionTestTargetBand == null) {
+                    withContext(dispatcher) {
+                        gateway.saveLearningSession(updated.language, updated.words, nowMillisProvider())
+                        gateway.saveLearningDraft(null)
+                    }
+                    refreshStats()
+                } else {
+                    withContext(dispatcher) { gateway.saveLearningDraft(null) }
+                    val message = applyPromotionTestResult(updated, promotionTestTargetBand)
+                    _uiState.update { current ->
+                        current.copy(learning = current.learning.copy(message = message))
+                    }
                 }
-                refreshStats()
             } else {
-                withContext(dispatcher) { gateway.saveLearningDraft(updated) }
+                if (promotionTestTargetBand == null) {
+                    withContext(dispatcher) { gateway.saveLearningDraft(updated) }
+                }
             }
         }
     }
@@ -280,7 +319,9 @@ class AppViewModel(
                 ),
             )
         }
-        persistLearningDraft(updated.takeUnless { it.stage == LearningStage.SUMMARY })
+        if (uiState.value.learning.promotionTestTargetBand == null) {
+            persistLearningDraft(updated.takeUnless { it.stage == LearningStage.SUMMARY })
+        }
     }
 
     fun onRestartLearning() {
@@ -526,7 +567,11 @@ class AppViewModel(
         }
     }
 
-    private suspend fun loadLearningSession(language: LearningLanguage) {
+    private suspend fun loadLearningSession(
+        language: LearningLanguage,
+        promotionTestTargetBand: LearningBand? = null,
+    ) {
+        val learningBand = promotionTestTargetBand ?: uiState.value.statsSettings.preferences.learningBand
         _uiState.update { current ->
             current.copy(
                 learning = current.learning.copy(
@@ -535,10 +580,11 @@ class AppViewModel(
                     feedbackWord = null,
                     isLoading = true,
                     message = null,
+                    promotionTestTargetBand = promotionTestTargetBand,
                 ),
             )
         }
-        val words = runCatching { withContext(dispatcher) { gateway.learningWords(language, limit = 10) } }.getOrDefault(emptyList())
+        val words = runCatching { withContext(dispatcher) { gateway.learningWords(language, learningBand, limit = 10) } }.getOrDefault(emptyList())
         val distractors = runCatching { withContext(dispatcher) { gateway.distractorMeanings(language, limit = 64) } }.getOrDefault(emptyList())
         val session = learningSessionBuilder.build(
             language = language,
@@ -553,11 +599,18 @@ class AppViewModel(
                     session = session.takeIf { it.words.isNotEmpty() },
                     feedbackWord = null,
                     isLoading = false,
-                    message = if (session.words.isEmpty()) "当前语言没有可学习的新词" else null,
+                    message = if (session.words.isEmpty()) {
+                        if (promotionTestTargetBand == null) "当前语言没有可学习的新词" else "当前没有可用的晋级测试词"
+                    } else {
+                        null
+                    },
+                    promotionTestTargetBand = promotionTestTargetBand,
                 ),
             )
         }
-        persistLearningDraft(session.takeIf { it.words.isNotEmpty() })
+        if (promotionTestTargetBand == null) {
+            persistLearningDraft(session.takeIf { it.words.isNotEmpty() })
+        }
     }
 
     private suspend fun loadReviewOverview() {
@@ -683,6 +736,32 @@ class AppViewModel(
         }
     }
 
+    private suspend fun applyPromotionTestResult(
+        session: LearningSession,
+        targetBand: LearningBand,
+    ): String {
+        val currentPreferences = uiState.value.statsSettings.preferences
+        val currentBand = currentPreferences.learningBand
+        if (targetBand != currentBand.next()) return "晋级测试已结束"
+
+        if (!session.isPerfectPromotionTest()) {
+            return "本次晋级测试未全对，继续练习后再试"
+        }
+
+        val passCount = currentPreferences.promotionPerfectPasses(currentBand) + 1
+        if (passCount >= PromotionRequiredPerfectPasses) {
+            savePreferences(
+                currentPreferences
+                    .withPromotionPerfectPasses(currentBand, 0)
+                    .copy(learningBand = targetBand),
+            )
+            return "已晋级到${targetBand.displayName()}"
+        }
+
+        savePreferences(currentPreferences.withPromotionPerfectPasses(currentBand, passCount))
+        return "晋级测试通过 $passCount/$PromotionRequiredPerfectPasses"
+    }
+
     private suspend fun savePreferences(preferences: UserPreferences) {
         withContext(dispatcher) { gateway.savePreferences(preferences) }
         _uiState.update { current ->
@@ -732,4 +811,36 @@ private fun Map<LearningLanguage, Int>.toOptions(): List<ReviewLanguageOption> =
 
 private fun LearningSession.findFeedbackWord(): StudyWordItem? = feedback?.wordId?.let { wordId ->
     words.firstOrNull { it.word.id == wordId }?.word
+}
+
+private const val PromotionRequiredPerfectPasses = 3
+
+private fun LearningSession.isPerfectPromotionTest(): Boolean =
+    words.isNotEmpty() && words.all {
+        it.choiceCorrectCount > 0 &&
+            it.spellingCorrectCount > 0 &&
+            it.choiceWrongCount == 0 &&
+            it.spellingWrongCount == 0 &&
+            it.hintUsedCount == 0
+    }
+
+private fun UserPreferences.promotionPerfectPasses(band: LearningBand): Int = when (band) {
+    LearningBand.BEGINNER -> beginnerPromotionPerfectPasses
+    LearningBand.INTERMEDIATE -> intermediatePromotionPerfectPasses
+    LearningBand.ADVANCED -> 0
+}
+
+private fun UserPreferences.withPromotionPerfectPasses(
+    band: LearningBand,
+    passCount: Int,
+): UserPreferences = when (band) {
+    LearningBand.BEGINNER -> copy(beginnerPromotionPerfectPasses = passCount)
+    LearningBand.INTERMEDIATE -> copy(intermediatePromotionPerfectPasses = passCount)
+    LearningBand.ADVANCED -> this
+}
+
+private fun LearningBand.displayName(): String = when (this) {
+    LearningBand.BEGINNER -> "新手"
+    LearningBand.INTERMEDIATE -> "进阶"
+    LearningBand.ADVANCED -> "高级"
 }
