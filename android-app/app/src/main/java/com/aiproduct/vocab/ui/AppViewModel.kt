@@ -517,6 +517,25 @@ class AppViewModel(
         }
     }
 
+    fun onDebugSelectLearningBand(band: LearningBand) {
+        viewModelScope.launch {
+            val preferences = uiState.value.statsSettings.preferences.copy(learningBand = band)
+            savePreferences(preferences)
+            withContext(dispatcher) { gateway.saveLearningDraft(null) }
+            _uiState.update { current ->
+                current.copy(
+                    learning = current.learning.copy(
+                        session = null,
+                        feedbackWord = null,
+                        promotionTestTargetBand = null,
+                        message = "Debug 阶段已切换到${band.displayName()}",
+                    ),
+                )
+            }
+            AppDebugLog.add("Debug", "learning band set to ${band.name}")
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         runCatching { gateway.close() }

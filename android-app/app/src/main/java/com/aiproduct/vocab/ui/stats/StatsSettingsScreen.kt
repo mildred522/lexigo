@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.aiproduct.vocab.R
+import com.aiproduct.vocab.domain.learning.LearningBand
 import com.aiproduct.vocab.domain.learning.LearningLanguage
 import com.aiproduct.vocab.ui.BackgroundTheme
 import com.aiproduct.vocab.ui.StatsSettingsUiState
@@ -48,6 +49,7 @@ fun StatsSettingsScreen(
     onToggleDailyCover: (Boolean) -> Unit,
     debugLogs: List<DebugLogEntry>,
     onToggleDebugMode: (Boolean) -> Unit,
+    onDebugSelectLearningBand: (LearningBand) -> Unit,
     onClearDebugLogs: () -> Unit,
     onTestJapaneseTts: () -> Unit,
     modifier: Modifier = Modifier,
@@ -180,6 +182,24 @@ fun StatsSettingsScreen(
                     QuietStudyButton(text = "Test Japanese TTS", onClick = onTestJapaneseTts, emphasized = true)
                     QuietStudyButton(text = "Clear logs", onClick = onClearDebugLogs)
                 }
+                Text(
+                    text = "Learning band override",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = StudyInk,
+                )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    LearningBand.entries.forEach { band ->
+                        QuietStudyButton(
+                            text = band.debugLabel(),
+                            onClick = { onDebugSelectLearningBand(band) },
+                            emphasized = uiState.preferences.learningBand == band,
+                        )
+                    }
+                }
                 if (debugLogs.isEmpty()) {
                     Text(
                         text = "No logs yet.",
@@ -222,6 +242,12 @@ fun StatsSettingsScreen(
             }
         }
     }
+}
+
+private fun LearningBand.debugLabel(): String = when (this) {
+    LearningBand.BEGINNER -> "新手"
+    LearningBand.INTERMEDIATE -> "进阶"
+    LearningBand.ADVANCED -> "高级"
 }
 
 @Composable

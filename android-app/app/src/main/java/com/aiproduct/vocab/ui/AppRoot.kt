@@ -187,6 +187,7 @@ fun AppRoot() {
                     onToggleDailyCover = viewModel::onToggleDailyCover,
                     debugLogs = debugLogs,
                     onToggleDebugMode = viewModel::onToggleDebugMode,
+                    onDebugSelectLearningBand = viewModel::onDebugSelectLearningBand,
                     onClearDebugLogs = AppDebugLog::clear,
                     onTestJapaneseTts = { speaker.speak("ja", "\u306b\u307b\u3093") },
                 )
