@@ -104,5 +104,6 @@ internal fun hasSameInstallContract(
     return installedManifest.schemaVersion == assetManifest.schemaVersion &&
         installedManifest.dbFilename == assetManifest.dbFilename &&
         installedManifest.entryCount == assetManifest.entryCount &&
+        (assetManifest.dbByteCount == null || installedManifest.dbByteCount == assetManifest.dbByteCount) &&
         installedManifest.searchCapabilities.fts == assetManifest.searchCapabilities.fts
 }

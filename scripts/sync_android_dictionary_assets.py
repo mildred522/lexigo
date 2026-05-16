@@ -1,4 +1,5 @@
 import argparse
+import json
 import shutil
 from pathlib import Path
 
@@ -13,8 +14,14 @@ def sync_android_assets(*, package_dir: Path, assets_dir: Path) -> None:
         raise FileNotFoundError(f"Missing required packaged dictionary file(s) in {package_dir}: {missing_list}")
 
     assets_dir.mkdir(parents=True, exist_ok=True)
-    for filename in _REQUIRED_FILES:
-        shutil.copy2(package_dir / filename, assets_dir / filename)
+    shutil.copy2(package_dir / "dictionary.db", assets_dir / "dictionary.db")
+
+    manifest = json.loads((package_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["db_byte_count"] = (package_dir / "dictionary.db").stat().st_size
+    (assets_dir / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _parse_args() -> argparse.Namespace:

@@ -45,6 +45,7 @@ class DictionaryManifestReader {
             }
         }
         val entryCount = root.requireInt("entry_count")
+        val dbByteCount = root.optionalLong("db_byte_count")
         val searchCapabilities = root.requireObject("search_capabilities")
         val fts = searchCapabilities.requireBoolean("fts")
 
@@ -52,6 +53,7 @@ class DictionaryManifestReader {
             schemaVersion = schemaVersion,
             dbFilename = dbFilename,
             entryCount = entryCount,
+            dbByteCount = dbByteCount,
             searchCapabilities = DictionaryPackageManifest.SearchCapabilities(fts = fts),
         )
     }
@@ -78,6 +80,16 @@ class DictionaryManifestReader {
         getBoolean(key)
     } catch (error: JSONException) {
         throw IllegalArgumentException("Incompatible dictionary manifest: missing or invalid 'search_capabilities.$key'.", error)
+    }
+
+    private fun JSONObject.optionalLong(key: String): Long? = if (has(key)) {
+        try {
+            getLong(key)
+        } catch (error: JSONException) {
+            throw IllegalArgumentException("Incompatible dictionary manifest: invalid '$key'.", error)
+        }
+    } else {
+        null
     }
 
     companion object {

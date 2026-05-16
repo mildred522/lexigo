@@ -225,6 +225,12 @@ private fun LearningBand.sqlPredicate(): String = when (this) {
             l.level = 'N5'
             OR (l.level = 'N4' AND l.confidence >= 0.90)
           )
+          AND LENGTH(w.lemma) <= 8
+          AND w.pos NOT LIKE '%expression%'
+          AND w.pos NOT LIKE '%phrase%'
+          AND w.pos NOT LIKE '%clause%'
+          AND w.pos NOT LIKE '%proverb%'
+          AND w.pos NOT LIKE '%idiom%'
         )
         """.trimIndent()
 

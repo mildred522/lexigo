@@ -358,9 +358,7 @@ private suspend fun DictionaryRepository.learningCandidateIds(
 ): List<Long> {
     if (language == LearningLanguage.JAPANESE) {
         val leveledIds = leveledWordIdsByLanguage(language.code, band, limit, offset)
-        if (leveledIds.isNotEmpty()) {
-            return leveledIds
-        }
+        return leveledIds
     }
     return randomWordIdsByLanguage(language.code, limit)
 }

@@ -35,4 +35,18 @@ class DictionaryAssetInstallerContractTest {
 
         assertTrue(hasSameInstallContract(manifest, manifest))
     }
+
+    @Test
+    fun hasSameInstallContract_returnsFalseWhenAssetByteCountIsNewer() {
+        val installedManifest = DictionaryPackageManifest(
+            schemaVersion = 1,
+            dbFilename = "dictionary.db",
+            entryCount = 2_359_088,
+            dbByteCount = null,
+            searchCapabilities = DictionaryPackageManifest.SearchCapabilities(fts = true),
+        )
+        val assetManifest = installedManifest.copy(dbByteCount = 1_390_219_264L)
+
+        assertFalse(hasSameInstallContract(installedManifest, assetManifest))
+    }
 }
